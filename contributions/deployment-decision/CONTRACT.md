@@ -4,7 +4,7 @@
 
 `evaluate(bundle, context)` has two inputs. The bundle is producer-controlled. The context is supplied by the relying party through an authenticated local path and contains the actual weight bytes, target, fresh challenge, decision time, usage, region, and trust policy. A producer must never supply both inputs in a deployment integration. Keeping them beside each other in a fixture is a testing convenience.
 
-The bundle has four required slots: evaluation, test appraisal, serving appraisal, and approval. A slot may be explicitly `null` to report unavailable evidence. An omitted slot is an input error. Signed objects have no trust-store or remote key-discovery field; extra fields are rejected. Local issuer/key pairs must be unique. Each key has an allowed role and local validity and revocation state. Evaluation keys additionally have allowed evaluation domains. No network requests occur.
+The bundle has seven required slots: evaluation, test appraisal, serving appraisal, approval, acceptance criteria, criteria timestamp and evaluation timestamp. A slot may be explicitly `null` to report unavailable evidence. An omitted slot is an input error. Signed objects have no trust-store or remote key-discovery field; extra fields are rejected. Local issuer/key pairs must be unique. Each key has an allowed role and local validity and revocation state. Evaluation keys additionally have allowed evaluation domains. No network requests occur.
 
 The separate byte entrypoints are `evaluateWire(bundleBytes, contextBytes)` and Python `evaluate_wire`. Each input is UTF-8 JSON, at most 1,048,576 bytes and 64 nested containers. Duplicate property names are compared after escape decoding at every object level. Malformed UTF-8, invalid JSON (including a BOM or non-finite numbers), lone surrogates and exceeded limits refuse with `input_error`. Wire codes are `WIRE_DUPLICATE_KEY`, `WIRE_UTF8`, `WIRE_JSON`, `INVALID_UNICODE` and `WIRE_LIMIT`. When several wire errors coexist, an implementation may report the first one it encounters; agreement on error priority for such inputs is not claimed. The original object APIs cannot detect duplicates discarded by a caller's parser.
 
@@ -31,9 +31,12 @@ Unicode property ordering uses UTF-16 code units, and non-ASCII strings remain U
 5. Compare each environment measurement with its separately configured test/serving policy. Domain, algorithm and digest must all match; SHA-256 and SHA-384 require 32 and 48 bytes respectively. Each appraisal must cover every locally required adversary exclusion. Fail or inconclusive appraisals retain that meaning. Synthetic labels are not vendor measurement formats.
 6. Require the evaluation domain and outcome to meet local policy, and bind evaluation to the exact supplied signed test appraisal. Require the serving appraisal's environment ID and nonce to match the local target and challenge.
 7. Bind approval to the exact supplied signed evaluation and target. `deny` refuses. For `approve`, evaluate **every** condition against local observations. The v0.1 condition language supports only equality on `usage` and `region`, with conjunction semantics. An empty list explicitly means unconditional approval. An unknown operator/field is malformed, not ignored. A null observation makes the relevant condition not established; a conflicting observation fails.
-8. Retain all collected reason codes in sorted unique order. A known failure takes precedence over unavailable evidence. If there are no failures but at least one unavailable premise, return not established. Only a complete pass admits. Processing errors preempt partial evidence findings.
+8. Bind the evaluation to the exact supplied signed acceptance criteria (claim 8, from #31): the evaluation names the criteria envelope digest, and the reported metric and test-set digest must equal the committed ones. An outcome of `pass` must be recomputable: the reported `metric_value` must satisfy the committed `comparator` and `threshold`. A first commitment (`revision: 1`) names no predecessor; a revision names the digest of the commitment it replaces in `supersedes`. Each timestamp statement, signed by a separately enrolled time-authority key, must name the digest of its statement. When both timestamps are bound, a criteria `gen_time` later than the evaluation `gen_time` leaves the ordering not established (`CRITERIA_ORDER`); it is not treated as a contradiction, because the criteria may only have been timestamped late. Equal times pass: the claim is "no later than".
+9. Retain all collected reason codes in sorted unique order. A known failure takes precedence over unavailable evidence. If there are no failures but at least one unavailable premise, return not established. Only a complete pass admits. Processing errors preempt partial evidence findings.
 
 Missing linked statements are handled through their required slots. For example, an evaluation pointing to an unavailable test appraisal cannot pass because `test_environment: null` contributes `MISSING_TEST_ENVIRONMENT`. A correct digest does not rescue a bad signature or an unknown appraisal.
+
+Claim 8 limits, carried with the claim: it does not show that no unrecorded evaluation run happened before the commitment, and it says nothing about whether the reported metric is correct. An offline checker also cannot see a commitment that is simply not supplied, so a stricter earlier commitment for the same artifact is only detectable where commitments are discoverable, for example in a transparency log. The fixture timestamp statements stand in for RFC 3161 tokens; verifying native tokens is adapter work.
 
 ## Candidate families
 
@@ -49,6 +52,7 @@ The machine-readable corpus defines exact expected status, verdict, admission an
 | Evaluation/approval | Wrong evidence links, wrong evaluation domain, failed/inconclusive result, denial, wrong approval target |
 | Conditions | Both positions fail independently; both can be unknown; failure plus missing evidence preserves both reasons |
 | Input/profile | Missing slot, boolean outcome, unsupported condition operator, producer trust-store injection, dates, measurement width, duplicate local keys, invalid Unicode |
+| Criteria (claim 8) | Substituted criteria, unsupported pass, criteria timestamped after the evaluation, missing criteria, unreferenced revision, predecessor on a first commitment, metric and test-set mismatch, unbound timestamps; each refusal has a passing twin (named lowered criteria, metric at an inclusive threshold, equal times, referenced revision) |
 
 The reference test suite also permutes object-property arrival order and checks that deeply nested malformed JSON returns a processing error without exhausting the call stack. Array order has its declared meaning: conditions are conjoined; statements are named slots. This package is not an unordered event-stream reconstruction experiment.
 
@@ -63,6 +67,7 @@ This is a mapping of responsibilities, not a claim that the mechanisms interoper
 | Attestation and appraisal | [RATS architecture, RFC 9334](https://www.rfc-editor.org/rfc/rfc9334) | Azure SNP/vTPM signature/challenge checks are exercised; platform policy, execution binding and an agreed signed appraisal profile remain open |
 | Structural interchange | [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-core) | Node/Python comparison is implemented; external implementation and native-format mappings remain open |
 | Policy and conditional approval | Relying-party policy plus an authorized signed decision | Compare existing authorization/policy representations before inventing a condition vocabulary |
+| Trusted time for criteria and evaluation | [Time-Stamp Protocol, RFC 3161](https://www.rfc-editor.org/rfc/rfc3161); transparency logs such as Sigstore Rekor | Replace the fixture timestamp statements with verified native tokens; decide which time authorities a relying party enrolls |
 
 ## Decisions for WS1 reviewers
 
@@ -70,6 +75,7 @@ This is a mapping of responsibilities, not a claim that the mechanisms interoper
 - Which existing signed formats should carry these claims? Can an explicit composition profile meet the use case without a new format?
 - Should approval be a separate transported statement, an output of local policy, or both? Which party may authorize each condition?
 - What establishes evaluator authority at evaluation time, historical appraisal validity, supersession, maximum age and revocation freshness?
+- Who issues the acceptance criteria commitment (the relying party, or the evaluator under its authority), and must the commitment history for an artifact be discoverable so that an earlier, stricter commitment cannot be silently left out?
 - What binds model bytes to the measured workload, and how is the serving target observed? Which adversaries does each platform profile actually address?
 - Which conditions need continuous enforcement after admission? Who supplies trustworthy region/usage facts, and what happens when they change?
 

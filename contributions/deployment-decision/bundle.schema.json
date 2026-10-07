@@ -83,6 +83,21 @@
                         "fail",
                         "not_established"
                       ]
+                    },
+                    "criteria_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "metric": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "metric_value": {
+                      "type": "number"
+                    },
+                    "test_set_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
                     }
                   },
                   "required": [
@@ -90,7 +105,11 @@
                     "test_environment_digest",
                     "harness_digest",
                     "log_digest",
-                    "outcome"
+                    "outcome",
+                    "criteria_digest",
+                    "metric",
+                    "metric_value",
+                    "test_set_digest"
                   ],
                   "additionalProperties": false
                 },
@@ -566,6 +585,358 @@
           "type": "null"
         }
       ]
+    },
+    "criteria": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "const": "criteria"
+                },
+                "issuer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "key_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "valid_from": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "subject": {
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                "details": {
+                  "type": "object",
+                  "properties": {
+                    "metric": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "comparator": {
+                      "enum": [
+                        ">=",
+                        ">",
+                        "<=",
+                        "<"
+                      ]
+                    },
+                    "threshold": {
+                      "type": "number"
+                    },
+                    "test_set_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "decision_rule": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "supersedes": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "metric",
+                    "comparator",
+                    "threshold",
+                    "test_set_digest",
+                    "decision_rule",
+                    "revision",
+                    "supersedes"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "profile",
+                "kind",
+                "issuer",
+                "key_id",
+                "valid_from",
+                "valid_until",
+                "subject",
+                "details",
+                "annotations"
+              ],
+              "additionalProperties": false
+            },
+            "signature": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{128}(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "payload",
+            "signature"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "criteria_timestamp": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "const": "criteria_timestamp"
+                },
+                "issuer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "key_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "valid_from": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "subject": {
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                "details": {
+                  "type": "object",
+                  "properties": {
+                    "statement_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "gen_time": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "statement_digest",
+                    "gen_time"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "profile",
+                "kind",
+                "issuer",
+                "key_id",
+                "valid_from",
+                "valid_until",
+                "subject",
+                "details",
+                "annotations"
+              ],
+              "additionalProperties": false
+            },
+            "signature": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{128}(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "payload",
+            "signature"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evaluation_timestamp": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "const": "evaluation_timestamp"
+                },
+                "issuer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "key_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "valid_from": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "valid_until": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                },
+                "subject": {
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "domain",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                "details": {
+                  "type": "object",
+                  "properties": {
+                    "statement_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                    },
+                    "gen_time": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ(?![\\s\\S])"
+                    }
+                  },
+                  "required": [
+                    "statement_digest",
+                    "gen_time"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "profile",
+                "kind",
+                "issuer",
+                "key_id",
+                "valid_from",
+                "valid_until",
+                "subject",
+                "details",
+                "annotations"
+              ],
+              "additionalProperties": false
+            },
+            "signature": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{128}(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "payload",
+            "signature"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -573,7 +944,10 @@
     "evaluation",
     "test_environment",
     "serving_environment",
-    "approval"
+    "approval",
+    "criteria",
+    "criteria_timestamp",
+    "evaluation_timestamp"
   ],
   "additionalProperties": false
 }

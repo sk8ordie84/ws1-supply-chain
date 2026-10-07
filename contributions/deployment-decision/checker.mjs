@@ -7,7 +7,8 @@ import canonicalize from 'canonicalize';
 export const PROFILE = 'ws1-deployment-experiment/0.1+jcs-ed25519';
 const PREFIX = Buffer.from('WS1-DEPLOYMENT-EXPERIMENT-v0.1\0', 'utf8');
 const SPKI = Buffer.from('302a300506032b6570032100', 'hex');
-const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval'];
+const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval', 'criteria', 'criteria_timestamp', 'evaluation_timestamp'];
+const compare = {'>=': (v, t) => v >= t, '>': (v, t) => v > t, '<=': (v, t) => v <= t, '<': (v, t) => v < t};
 const ajv = new Ajv2020({allErrors: true, strict: true});
 addFormats(ajv);
 const schema = name => JSON.parse(readFileSync(new URL(name, import.meta.url), 'utf8'));
@@ -111,6 +112,34 @@ export function evaluate(bundle, context) {
       else if (observed !== condition.value) fail(`CONDITION_${condition.field.toUpperCase()}`);
     }
   }
+  // Claim 8 (#31): the outcome must be checkable against committed criteria, and the criteria must carry
+  // an independent time no later than the evaluation's. A first commitment names no predecessor; a revision does.
+  if (authenticated.has('criteria')) {
+    const c = bundle.criteria.payload.details;
+    if ((c.revision === 1) !== (c.supersedes === null)) fail('CRITERIA_SUPERSESSION');
+  }
+  if (authenticated.has('evaluation') && bundle.criteria) {
+    const d = bundle.evaluation.payload.details;
+    if (d.criteria_digest !== digestEnvelope(bundle.criteria)) fail('CRITERIA_BINDING');
+    else if (authenticated.has('criteria')) {
+      const c = bundle.criteria.payload.details;
+      if (d.metric !== c.metric) fail('CRITERIA_METRIC');
+      if (d.test_set_digest !== c.test_set_digest) fail('CRITERIA_TEST_SET');
+      // A pass must be recomputable from the reported metric and the committed threshold.
+      if (d.outcome === 'pass' && !compare[c.comparator](d.metric_value, c.threshold)) fail('CRITERIA_OUTCOME');
+    }
+  }
+  const stamped = (slot, statement, code) => {
+    if (!authenticated.has(slot) || !bundle[statement]) return null;
+    const t = bundle[slot].payload.details;
+    if (t.statement_digest !== digestEnvelope(bundle[statement])) { fail(code); return null; }
+    return t.gen_time;
+  };
+  const criteriaTime = stamped('criteria_timestamp', 'criteria', 'CRITERIA_TIMESTAMP_BINDING');
+  const evaluationTime = stamped('evaluation_timestamp', 'evaluation', 'EVALUATION_TIMESTAMP_BINDING');
+  // Ordering is established only from two bound trusted times; a later criteria time is not a contradiction
+  // (the criteria may simply have been timestamped late), so it leaves the result not established.
+  if (criteriaTime && evaluationTime && criteriaTime > evaluationTime) unknown('CRITERIA_ORDER');
   // A known contradiction outranks unavailable evidence, while every reason is retained.
   return finish('complete', failures.length ? 'fail' : unknowns.length ? 'not_established' : 'pass', [...failures, ...unknowns]);
 }

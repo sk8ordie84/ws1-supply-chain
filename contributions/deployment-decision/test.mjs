@@ -106,7 +106,15 @@ const mutations = [
   ['missing-claim', 'unknown(`MISSING_${kind.toUpperCase()}`)', 'void 0'],
   ['unknown-profile', "bundle.profile !== PROFILE || kinds.some(k => bundle[k] && bundle[k].payload.profile !== PROFILE)", 'false'],
   ['last-condition', 'for (const condition of d.conditions)', 'for (const condition of d.conditions.slice(0, 1))'],
-  ['not-established-admission', "status === 'complete' && verdict === 'pass'", "status === 'complete' && verdict !== 'fail'"]
+  ['not-established-admission', "status === 'complete' && verdict === 'pass'", "status === 'complete' && verdict !== 'fail'"],
+  ['criteria-binding', 'd.criteria_digest !== digestEnvelope(bundle.criteria)', 'false'],
+  ['criteria-metric', 'd.metric !== c.metric', 'false'],
+  ['criteria-test-set', 'd.test_set_digest !== c.test_set_digest', 'false'],
+  ['criteria-outcome', "d.outcome === 'pass' && !compare[c.comparator](d.metric_value, c.threshold)", 'false'],
+  ['criteria-inclusive-threshold', "'>=': (v, t) => v >= t", "'>=': (v, t) => v > t"],
+  ['criteria-supersession', '(c.revision === 1) !== (c.supersedes === null)', 'false'],
+  ['timestamp-binding', 't.statement_digest !== digestEnvelope(bundle[statement])', 'false'],
+  ['criteria-order', 'criteriaTime > evaluationTime', 'false']
 ];
 for (const [name, from, to] of mutations) {
   assert.equal(source.split(from).length, 2, `mutation must match exactly once: ${name}`);

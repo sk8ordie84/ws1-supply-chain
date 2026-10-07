@@ -23,6 +23,9 @@ def check():
         ("measurement", 'details["measurement"] != expected_measurement', 'False'),
         ("binding", 'details[field] != digest', 'False'),
         ("unknown-admission", 'verdict == "pass"', 'verdict != "fail"'),
+        ("criteria-outcome", 'details["outcome"] == "pass" and not COMPARE[criteria["comparator"]](details["metric_value"], criteria["threshold"])', 'False'),
+        ("criteria-order", 'criteria_time > evaluation_time', 'False'),
+        ("criteria-supersession", '(criteria["revision"] == 1) != (criteria["supersedes"] is None)', 'False'),
     ]
     detected = {}
     for name, before, after in mutations:

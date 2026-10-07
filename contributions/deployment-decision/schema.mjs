@@ -7,15 +7,24 @@ const list = items => ({type: 'array', items, uniqueItems: true});
 const obj = properties => ({type: 'object', properties, required: Object.keys(properties), additionalProperties: false});
 const maybe = schema => ({anyOf: [schema, {type: 'null'}]});
 const time = {type: 'string', format: 'date-time', pattern: '^\\d{4}-\\d{2}-\\d{2}T[0-2]\\d:[0-5]\\d:[0-5]\\dZ' + end};
-export const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval'];
+export const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval', 'criteria', 'criteria_timestamp', 'evaluation_timestamp'];
 const subject = obj({domain: text, sha256: hex(64)});
 const measurement = obj({domain: text, algorithm: {enum: ['sha256', 'sha384']}, digest: {type: 'string', pattern: '^([0-9a-f]{64}|[0-9a-f]{96})' + end}});
 const environment = obj({environment_id: text, measurement, adversary_exclusions: list(text), nonce: text, outcome: {enum: ['pass', 'fail', 'not_established']}});
+const timestamp = obj({statement_digest: hex(64), gen_time: time});
 const details = {
-  evaluation: obj({evaluation_domain: text, test_environment_digest: hex(64), harness_digest: hex(64), log_digest: hex(64), outcome: {enum: ['pass', 'fail', 'not_established']}}),
+  evaluation: obj({evaluation_domain: text, test_environment_digest: hex(64), harness_digest: hex(64), log_digest: hex(64), outcome: {enum: ['pass', 'fail', 'not_established']},
+    // Claim 8 (#31): the committed criteria this outcome was judged against, and the measured value.
+    criteria_digest: hex(64), metric: text, metric_value: {type: 'number'}, test_set_digest: hex(64)}),
   test_environment: environment,
   serving_environment: environment,
-  approval: obj({evaluation_digest: hex(64), serving_environment_id: text, decision: {enum: ['approve', 'deny']}, conditions: list(obj({field: {enum: ['usage', 'region']}, op: {const: 'eq'}, value: text}))})
+  approval: obj({evaluation_digest: hex(64), serving_environment_id: text, decision: {enum: ['approve', 'deny']}, conditions: list(obj({field: {enum: ['usage', 'region']}, op: {const: 'eq'}, value: text}))}),
+  // Claim 8: the pass bar, committed as its own statement. A revision names the commitment it replaces.
+  criteria: obj({metric: text, comparator: {enum: ['>=', '>', '<=', '<']}, threshold: {type: 'number'}, test_set_digest: hex(64),
+    decision_rule: text, revision: {type: 'integer', minimum: 1}, supersedes: maybe(hex(64))}),
+  // RFC 3161-style token from a separate time authority: digest of one bundle statement and the time it attests.
+  criteria_timestamp: timestamp,
+  evaluation_timestamp: timestamp
 };
 const envelope = kind => obj({
   payload: obj({profile: text, kind: {const: kind}, issuer: text, key_id: text,

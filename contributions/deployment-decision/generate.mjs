@@ -8,7 +8,7 @@ import canonicalize from 'canonicalize';
 import {bundleSchema, contextSchema} from './schema.mjs';
 
 const PROFILE = 'ws1-deployment-experiment/0.1+jcs-ed25519';
-const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval'];
+const kinds = ['evaluation', 'test_environment', 'serving_environment', 'approval', 'criteria', 'criteria_timestamp', 'evaluation_timestamp'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const hashEnvelope = env => digest(Buffer.from(canonicalize(env)));
 const seedKey = n => createPrivateKey({key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.alloc(32, n)]), format: 'der', type: 'pkcs8'});
@@ -43,8 +43,14 @@ export function baseline() {
   const bundle = {profile: PROFILE};
   bundle.test_environment = seal('test_environment', payload('test_environment', environment('test-1', 'historical-test-challenge')));
   bundle.serving_environment = seal('serving_environment', payload('serving_environment', environment('serve-1', context.challenge)));
+  // Claim 8 (#31): the pass bar is committed and independently timestamped before the evaluation statement.
+  bundle.criteria = seal('criteria', payload('criteria', {metric: 'accuracy', comparator: '>=', threshold: 0.92,
+    test_set_digest: '33'.repeat(32), decision_rule: 'single-metric', revision: 1, supersedes: null}));
+  bundle.criteria_timestamp = seal('criteria_timestamp', payload('criteria_timestamp', {statement_digest: hashEnvelope(bundle.criteria), gen_time: '2026-09-15T12:05:00Z'}));
   bundle.evaluation = seal('evaluation', payload('evaluation', {evaluation_domain: context.policy.evaluation_domain,
-    test_environment_digest: hashEnvelope(bundle.test_environment), harness_digest: '11'.repeat(32), log_digest: '22'.repeat(32), outcome: 'pass'}));
+    test_environment_digest: hashEnvelope(bundle.test_environment), harness_digest: '11'.repeat(32), log_digest: '22'.repeat(32), outcome: 'pass',
+    criteria_digest: hashEnvelope(bundle.criteria), metric: 'accuracy', metric_value: 0.93, test_set_digest: '33'.repeat(32)}));
+  bundle.evaluation_timestamp = seal('evaluation_timestamp', payload('evaluation_timestamp', {statement_digest: hashEnvelope(bundle.evaluation), gen_time: '2026-09-15T12:20:00Z'}));
   bundle.approval = seal('approval', payload('approval', {evaluation_digest: hashEnvelope(bundle.evaluation),
     serving_environment_id: 'serve-1', decision: 'approve', conditions: [
       {field: 'usage', op: 'eq', value: 'internal'}, {field: 'region', op: 'eq', value: 'region-a'}]}));
@@ -55,8 +61,20 @@ export function baseline() {
 function changeSigned(input, kind, edit) {
   edit(input.bundle[kind].payload);
   input.bundle[kind] = seal(kind, input.bundle[kind].payload);
-  if (kind === 'test_environment') changeSigned(input, 'evaluation', p => {p.details.test_environment_digest = hashEnvelope(input.bundle.test_environment);});
-  if (kind === 'evaluation') changeSigned(input, 'approval', p => {p.details.evaluation_digest = hashEnvelope(input.bundle.evaluation);});
+  rebind(input, kind);
+}
+// Re-sign the statements that reference a changed one, so a case changes only the property under test.
+function rebind(input, kind) {
+  const b = input.bundle;
+  if (kind === 'test_environment' && b.evaluation) changeSigned(input, 'evaluation', p => {p.details.test_environment_digest = hashEnvelope(b.test_environment);});
+  if (kind === 'criteria') {
+    if (b.criteria_timestamp) changeSigned(input, 'criteria_timestamp', p => {p.details.statement_digest = hashEnvelope(b.criteria);});
+    if (b.evaluation) changeSigned(input, 'evaluation', p => {p.details.criteria_digest = hashEnvelope(b.criteria);});
+  }
+  if (kind === 'evaluation') {
+    if (b.evaluation_timestamp) changeSigned(input, 'evaluation_timestamp', p => {p.details.statement_digest = hashEnvelope(b.evaluation);});
+    if (b.approval) changeSigned(input, 'approval', p => {p.details.evaluation_digest = hashEnvelope(b.evaluation);});
+  }
 }
 
 export function fixtures() {
@@ -77,9 +95,7 @@ export function fixtures() {
     add(`missing-${kind}`, 'An explicitly unavailable claim never passes', i => {i.bundle[kind] = null;}, expected('not_established', `MISSING_${K}`));
     add(`wrong-subject-${kind}`, 'Every signed claim binds to the exact weight digest', i => changeSigned(i, kind, p => {p.subject.sha256 = 'ff'.repeat(32);}), expected('fail', `ARTIFACT_${K}`));
     add(`wrong-domain-${kind}`, 'A registry digest is not a weight-byte digest even if the bytes match', i => changeSigned(i, kind, p => {p.subject.domain = 'oci-manifest/sha256';}), expected('fail', `ARTIFACT_${K}`));
-    add(`bad-signature-${kind}`, 'A signature failure is a contradiction, not missing evidence', i => {i.bundle[kind].signature = '00'.repeat(64);
-      if (kind === 'test_environment') changeSigned(i, 'evaluation', p => {p.details.test_environment_digest = hashEnvelope(i.bundle.test_environment);});
-      if (kind === 'evaluation') changeSigned(i, 'approval', p => {p.details.evaluation_digest = hashEnvelope(i.bundle.evaluation);});
+    add(`bad-signature-${kind}`, 'A signature failure is a contradiction, not missing evidence', i => {i.bundle[kind].signature = '00'.repeat(64); rebind(i, kind);
     }, expected('fail', `SIGNATURE_${K}`));
     add(`expired-${kind}`, 'Each claim expires independently', i => changeSigned(i, kind, p => {p.valid_until = i.context.now;}), expected('fail', `TIME_${K}`));
     add(`revocation-unknown-${kind}`, 'Unreachable revocation cannot become permission', i => {i.context.policy.keys.find(k => k.roles.includes(kind)).revocation = 'unknown';}, expected('not_established', `REVOCATION_${K}`));
@@ -114,6 +130,24 @@ export function fixtures() {
     add(`unknown-${field}`, 'Unknown condition facts remain not established', i => {i.context[field] = null;}, expected('not_established', `CONDITION_${field.toUpperCase()}`));
   }
   add('failure-with-missing-evidence', 'Known contradiction takes precedence while preserving missing-evidence reasons', i => {i.bundle.test_environment = null; i.context.usage = 'external';}, expected('fail', 'CONDITION_USAGE', 'MISSING_TEST_ENVIRONMENT'));
+  // Claim 8 (#31): five refusals, each with a passing twin that differs only in the property under test.
+  const original = i => clone(i.bundle.criteria);
+  add('criteria-substituted', 'The criteria shown must be the criteria the evaluation names: a lowered threshold cannot be swapped in', i => {
+    i.bundle.criteria.payload.details.threshold = 0.88; i.bundle.criteria = seal('criteria', i.bundle.criteria.payload);
+    changeSigned(i, 'criteria_timestamp', p => {p.details.statement_digest = hashEnvelope(i.bundle.criteria);});
+  }, expected('fail', 'CRITERIA_BINDING'), 'criteria-matches-evaluation');
+  add('criteria-matches-evaluation', 'Twin: the same lowered criteria pass when the evaluation names their digest; the binding, not the value, is what refuses', i => changeSigned(i, 'criteria', p => {p.details.threshold = 0.88;}), OK, null);
+  add('criteria-outcome-unsupported', 'A pass must be recomputable: 0.89 does not meet the committed 0.92', i => changeSigned(i, 'evaluation', p => {p.details.metric_value = 0.89;}), expected('fail', 'CRITERIA_OUTCOME'), 'criteria-metric-at-threshold');
+  add('criteria-metric-at-threshold', 'Twin: a metric exactly at an inclusive threshold passes', i => changeSigned(i, 'evaluation', p => {p.details.metric_value = 0.92;}), OK, null);
+  add('criteria-after-evaluation', 'Criteria timestamped after the evaluation statement cannot be shown to precede it', i => changeSigned(i, 'criteria_timestamp', p => {p.details.gen_time = '2026-09-15T12:25:00Z';}), expected('not_established', 'CRITERIA_ORDER'), 'criteria-same-second');
+  add('criteria-same-second', 'Twin: criteria time no later than the evaluation time, here the same second', i => changeSigned(i, 'criteria_timestamp', p => {p.details.gen_time = '2026-09-15T12:20:00Z';}), OK, null);
+  add('criteria-revision-unreferenced', 'A revised commitment must name the commitment it replaces', i => changeSigned(i, 'criteria', p => {p.details.revision = 2;}), expected('fail', 'CRITERIA_SUPERSESSION'), 'criteria-revision-referenced');
+  add('criteria-revision-referenced', 'Twin: revision 2 names the digest of revision 1', i => {const first = hashEnvelope(original(i)); changeSigned(i, 'criteria', p => {p.details.revision = 2; p.details.supersedes = first;});}, OK, null);
+  add('criteria-first-with-predecessor', 'A first commitment names no predecessor', i => changeSigned(i, 'criteria', p => {p.details.supersedes = 'ab'.repeat(32);}), expected('fail', 'CRITERIA_SUPERSESSION'));
+  add('criteria-metric-mismatch', 'The reported metric is the committed metric', i => changeSigned(i, 'evaluation', p => {p.details.metric = 'f1';}), expected('fail', 'CRITERIA_METRIC'));
+  add('criteria-test-set-mismatch', 'The evaluated test set is the committed test set', i => changeSigned(i, 'evaluation', p => {p.details.test_set_digest = '44'.repeat(32);}), expected('fail', 'CRITERIA_TEST_SET'));
+  add('criteria-timestamp-unbound', 'A criteria timestamp covers this exact criteria statement', i => changeSigned(i, 'criteria_timestamp', p => {p.details.statement_digest = 'ff'.repeat(32);}), expected('fail', 'CRITERIA_TIMESTAMP_BINDING'));
+  add('evaluation-timestamp-unbound', 'An evaluation timestamp covers this exact evaluation statement', i => changeSigned(i, 'evaluation_timestamp', p => {p.details.statement_digest = 'ff'.repeat(32);}), expected('fail', 'EVALUATION_TIMESTAMP_BINDING'));
   add('unknown-bundle-profile', 'No silent fallback to a different serialization profile', i => {i.bundle.profile = 'unknown/2';}, unsupported);
   add('unknown-signed-profile', 'Each signed statement names its profile', i => changeSigned(i, 'approval', p => {p.profile = 'unknown/2';}), unsupported);
   add('missing-required-slot', 'Omission is malformed; explicit null represents unavailability', i => {delete i.bundle.approval;}, inputError('INPUT_SCHEMA'));

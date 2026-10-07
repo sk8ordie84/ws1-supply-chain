@@ -134,7 +134,10 @@
                     "evaluation",
                     "test_environment",
                     "serving_environment",
-                    "approval"
+                    "approval",
+                    "criteria",
+                    "criteria_timestamp",
+                    "evaluation_timestamp"
                   ]
                 }
               },

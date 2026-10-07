@@ -1,6 +1,6 @@
 # Second implementation and strict ingress
 
-The Node and Python implementations match all 82 authored candidate results, including exact reason codes. This is a second implementation by the same contributor. It is not independent external validation or a WS1 interoperability certification.
+The Node and Python implementations match all 113 authored candidate results, including exact reason codes. This is a second implementation by the same contributor. It is not independent external validation or a WS1 interoperability certification.
 
 | Responsibility | Node.js | Python |
 |---|---|---|
@@ -26,7 +26,7 @@ python test_mutations.py
 
 `test_interop.py` checks corpus bytes and exact IDs, scores both implementations, exercises 26 strict-wire cases and four separate-file CLI invocations, and checks literal JCS Unicode bytes and RFC 8032's first Ed25519 known-answer vector. It prints a JSON report without changing committed files. `interop-results.json` records one run, including source hashes.
 
-`test_mutations.py` removes seven selected Python semantic gates and duplicate rejection from each wire parser. The seven semantic mutations must disagree with at least one authored result; removing duplicate detection must admit the duplicate-key counterexample. These nine probes supplement the 25 existing Node checker mutations. They are not an exhaustive fault model.
+`test_mutations.py` removes ten selected Python semantic gates and duplicate rejection from each wire parser. The ten semantic mutations must disagree with at least one authored result; removing duplicate detection must admit the duplicate-key counterexample. These twelve probes supplement the 33 existing Node checker mutations. They are not an exhaustive fault model.
 
 Use separate producer and local inputs at the boundary:
 

@@ -20,7 +20,9 @@ from nacl.signing import VerifyKey
 
 PROFILE = "ws1-deployment-experiment/0.1+jcs-ed25519"
 PREFIX = b"WS1-DEPLOYMENT-EXPERIMENT-v0.1\0"
-KINDS = ("evaluation", "test_environment", "serving_environment", "approval")
+KINDS = ("evaluation", "test_environment", "serving_environment", "approval",
+         "criteria", "criteria_timestamp", "evaluation_timestamp")
+COMPARE = {">=": lambda v, t: v >= t, ">": lambda v, t: v > t, "<=": lambda v, t: v <= t, "<": lambda v, t: v < t}
 MAX_BYTES, MAX_DEPTH = 1048576, 64
 ROOT = Path(__file__).resolve().parent
 
@@ -190,9 +192,12 @@ def evaluate(bundle, context):
             elif details["outcome"] == "not_established":
                 unknowns.add("APPRAISAL_" + suffix)
 
+    def envelope_digest(kind):
+        return hashlib.sha256(rfc8785.dumps(bundle[kind])).hexdigest()
+
     def binding(details, field, linked, code):
         if bundle[linked] is not None:
-            digest = hashlib.sha256(rfc8785.dumps(bundle[linked])).hexdigest()
+            digest = envelope_digest(linked)
             if details[field] != digest:
                 failures.add(code)
 
@@ -225,6 +230,38 @@ def evaluate(bundle, context):
                 unknowns.add(code)
             elif actual != condition["value"]:
                 failures.add(code)
+    # Claim 8 (#31): committed criteria, a recomputable pass, supersession and trusted ordering.
+    if "criteria" in authenticated:
+        criteria = authenticated["criteria"]
+        if (criteria["revision"] == 1) != (criteria["supersedes"] is None):
+            failures.add("CRITERIA_SUPERSESSION")
+    if "evaluation" in authenticated and bundle["criteria"] is not None:
+        details = authenticated["evaluation"]
+        if details["criteria_digest"] != envelope_digest("criteria"):
+            failures.add("CRITERIA_BINDING")
+        elif "criteria" in authenticated:
+            criteria = authenticated["criteria"]
+            if details["metric"] != criteria["metric"]:
+                failures.add("CRITERIA_METRIC")
+            if details["test_set_digest"] != criteria["test_set_digest"]:
+                failures.add("CRITERIA_TEST_SET")
+            if details["outcome"] == "pass" and not COMPARE[criteria["comparator"]](details["metric_value"], criteria["threshold"]):
+                failures.add("CRITERIA_OUTCOME")
+
+    def stamped(slot, statement, code):
+        if slot not in authenticated or bundle[statement] is None:
+            return None
+        token = authenticated[slot]
+        if token["statement_digest"] != envelope_digest(statement):
+            failures.add(code)
+            return None
+        return token["gen_time"]
+
+    criteria_time = stamped("criteria_timestamp", "criteria", "CRITERIA_TIMESTAMP_BINDING")
+    evaluation_time = stamped("evaluation_timestamp", "evaluation", "EVALUATION_TIMESTAMP_BINDING")
+    # A later criteria time is not a contradiction; it leaves the ordering not established.
+    if criteria_time and evaluation_time and criteria_time > evaluation_time:
+        unknowns.add("CRITERIA_ORDER")
     return result("complete", "fail" if failures else "not_established" if unknowns else "pass", failures | unknowns)
 
 

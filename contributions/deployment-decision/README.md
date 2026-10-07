@@ -6,7 +6,9 @@
 
 A relying party asks: **may these exact model-weight bytes enter this specific serving environment under this approval?**
 
-The package contains a JSON Schema for the evidence bundle, a separate schema for local policy and observations, Node.js and Python offline checkers, and 82 language-neutral candidate vectors. Four cases admit; 78 refuse for a specified contradiction, missing premise, unsupported profile, or malformed input. Every refusal names an accepting twin. Both implementations check real Ed25519 signatures on synthetic statements.
+The package contains a JSON Schema for the evidence bundle, a separate schema for local policy and observations, Node.js and Python offline checkers, and 113 language-neutral candidate vectors. Eight cases admit; 105 refuse for a specified contradiction, missing premise, unsupported profile, or malformed input. Every refusal names an accepting twin. Both implementations check real Ed25519 signatures on synthetic statements.
+
+The bundle also carries claim 8 from #31: the acceptance criteria the evaluation outcome was judged against (metric, comparator, threshold, test-set digest, decision rule, revision), referenced by digest from the evaluation, plus RFC 3161-style timestamp statements over the criteria and the evaluation from a separately enrolled time-authority key. A `pass` must be recomputable from the reported metric and the committed threshold, and the criteria time must be no later than the evaluation time. The claim does not show that no unrecorded run preceded the commitment, and says nothing about whether the reported metric is correct.
 
 The output separates verification from admission:
 
@@ -40,13 +42,13 @@ npm run check
 
 On Windows PowerShell with script execution disabled, use `npm.cmd` for those commands. Dependencies are pinned in `package-lock.json`. Tests require no network after installation.
 
-`npm test` compares generated schemas and vectors with committed bytes, runs every case, permutes object-property order, checks a literal Unicode canonicalization oracle, checks deeply nested malformed input, verifies that always-admit and always-refuse implementations cannot pass, and removes 25 production checks in disposable copies. Every removed check must change at least one expected result. It writes `verification.json` and deletes the disposable copies.
+`npm test` compares generated schemas and vectors with committed bytes, runs every case, permutes object-property order, checks a literal Unicode canonicalization oracle, checks deeply nested malformed input, verifies that always-admit and always-refuse implementations cannot pass, and removes 33 production checks in disposable copies. Every removed check must change at least one expected result. It writes `verification.json` and deletes the disposable copies.
 
 `npm run check` checks the corpus digest and exact case IDs against `corpus-manifest.json`, then evaluates the existing corpus without regenerating or repairing it. The manifest detects local drift, not malicious replacement of both files. Tests remove a case and alter an expectation separately, require rejection, and verify the changed bytes are left untouched. Expected answers are supplied only to the scoring runner; the checker receives `bundle` and `context` as separate arguments. To intentionally edit the authored fixtures or schemas, change `generate.mjs` or `schema.mjs`, run `npm run generate`, and inspect the resulting diff. Generation never consults checker verdicts.
 
-For the second implementation, install `requirements.txt` in a Python 3.11+ virtual environment, then run `python test_interop.py` and `python test_mutations.py`. The first compares both implementations on the corpus and tests 26 wire cases plus four CLI invocations. The second detects nine selected Python/wire defects. CI runs these and the Node suite on Node 22/Python 3.11 and Node 24/Python 3.13. Hardware capture is a separate, explicitly invoked test; CI does not provision cloud resources.
+For the second implementation, install `requirements.txt` in a Python 3.11+ virtual environment, then run `python test_interop.py` and `python test_mutations.py`. The first compares both implementations on the corpus and tests 26 wire cases plus four CLI invocations. The second detects twelve selected Python/wire defects. CI runs these and the Node suite on Node 22/Python 3.11 and Node 24/Python 3.13. Hardware capture is a separate, explicitly invoked test; CI does not provision cloud resources.
 
-## How the seven claims map
+## How the claims map
 
 | Claim in WS1 #31 | Proposed representation | Executed check |
 |---|---|---|
@@ -57,6 +59,7 @@ For the second implementation, install `requirements.txt` in a Python 3.11+ virt
 | 5. Test-environment attestation | Synthetic signed `test_environment` appraisal | Measurement policy, exclusions, appraisal outcome, and binding from evaluation |
 | 6. Canonicalization profile and version | Profile inside every signed payload | Exact profile; RFC 8785 canonicalization and domain-separated Ed25519 verification |
 | 7. Time and validity | Local `now`; each statement and trust entry has `valid_from`/`valid_until` | Inclusive start, exclusive expiry, no implicit clock or expired-claim fallback |
+| 8. Acceptance criteria commitment (proposed in #31) | Signed `criteria`; `criteria_digest`, `metric`, `metric_value` and `test_set_digest` in the evaluation; `criteria_timestamp` and `evaluation_timestamp` from a time-authority key | Criteria-envelope binding, metric and test-set match, `pass` recomputed against the committed threshold, revision/supersession consistency, timestamp binding; a later criteria time leaves the decision not established |
 
 The digest itself does not expire; the statements about it do. Evaluator authority is local policy, so its freshness cannot be established by the evaluator asserting that it remains authorized.
 
@@ -64,10 +67,10 @@ An additional signed **approval** binds the evaluation to the serving target and
 
 ## Limits
 
-- The 82 core vectors use synthetic model bytes, keys, appraisals, measurements, identities, regions and environments. Deterministic private-key seeds in `generate.mjs` are public test material. They must never enter a real trust store.
+- The 113 core vectors use synthetic model bytes, keys, appraisals, measurements, identities, regions and environments. Deterministic private-key seeds in `generate.mjs` are public test material. They must never enter a real trust store.
 - A separate Azure adapter has been exercised with a real SNP/vTPM capture. It verifies report/certificate signatures, the HCL-to-AK link, challenge/artifact-digest binding and a guest-written PCR value. It does not establish model execution or a complete platform appraisal, so it cannot produce a passing deployment appraisal. Intel and NVIDIA attestation are not tested here. See the adapter's narrower [limits](hardware/README.md).
 - Region and usage facts come from trusted caller context. A hardware measurement does not prove location. This package does not authenticate a cloud control-plane record, deployment request or policy-store update.
-- No online revocation, timestamp service, transparency log, physical-attack resistance, benchmark execution, raw-log fetching, or running model deployment is tested. The Azure adapter checks certificate signatures against a separately enrolled AMD root and checks certificate validity at a supplied time. Log and harness digests are signed references; their source bytes and quality are not checked here.
+- No online revocation, timestamp service, transparency log, physical-attack resistance, benchmark execution, raw-log fetching, or running model deployment is tested. The Azure adapter checks certificate signatures against a separately enrolled AMD root and checks certificate validity at a supplied time. Log and harness digests are signed references; their source bytes and quality are not checked here. The criteria timestamp statements are synthetic: a locally enrolled Ed25519 time-authority key stands in for an RFC 3161 time-stamping authority, and no native token is parsed.
 - All claims and authority entries are checked at the decision time. Historical appraisal, evaluator authority at evaluation time, superseding claims, maximum evidence age, clock skew, continuous conditions, nonce consumption and distributed races remain unresolved. A challenge match alone does not prevent repeated use of the same challenge.
 - The object APIs still require already-parsed JSON. Use `check-wire.mjs` or `verify.py` for strict byte ingress: they reject duplicate decoded property names, malformed UTF-8 and lone surrogates, and bound inputs to 1 MiB and 64 container levels. This byte limit makes the inline-weight context suitable for small fixtures, not full-sized model packages. Only whole-second UTC timestamps without leap seconds are supported.
 - Node and Python use different validation, canonicalization and Ed25519 libraries, but share the schemas, contract, corpus and contributor. The Node checker and generator still share libraries. Mutation results cover the listed defects; they do not establish complete coverage, independent external interoperability, or CoSAI conformance. WCM supplies the optional hardware verification dependency and is also this contributor's work.

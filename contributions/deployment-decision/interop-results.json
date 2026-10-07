@@ -1,36 +1,39 @@
 {
   "status": "pass",
-  "candidates": 82,
-  "matched": 82,
+  "candidates": 113,
+  "matched": 113,
   "wire_checks": 26,
   "cli_checks": 4,
-  "python": "3.11.16",
+  "python": "3.12.13",
   "libraries": {
     "jsonschema": "4.26.0",
     "rfc8785": "0.1.4",
     "PyNaCl": "1.6.2"
   },
-  "vector_sha256": "317cffee10c02c766acf65837fc9bb870c4f589a1819b4269cac699a6577ba81",
+  "vector_sha256": "0e59d304381cdc6f8be521ab2b03f761c4b646740c625d998b73e78ee5bc9e92",
   "source_sha256": {
-    "verify.py": "c3d44d01027e22af3f37fd905b56509135e8769ae2131e4852727e9ccbce2abb",
+    "verify.py": "f274f490908cbc31f0311e5b1446258d0f82bc0cb7fb5ea80b4b9fb2fbb5cc24",
     "wire.mjs": "e7348470ef2513ea612c58e5903ea84cddbd31ef58e31d6c10e3b988f6507f56",
     "check-wire.mjs": "88125e82cfea161bdfc816aede49be56b1b3469423be4cf83f0ec03c36f0fd94",
     "wire-worker.mjs": "c5a2086977cdc4a3ed5ad9e819c0d0a8bff2436d378aaa35cdf1102d5c0114b6",
     "test_interop.py": "9a09cbb03e7480aed8215d9c644c2e532e712f541d48bccc88d182d2ee766435",
-    "test_mutations.py": "b45bed1271b2e333cfbf1d1f76970b81fed894564ce89964b4ca86e630606138",
+    "test_mutations.py": "d98d13ea128deb10075c468b8849845b2d6f58551d0901f26aa20e0f2aa1b416",
     "requirements.txt": "faf951f15d2986d9a4bae15b86aa0901a74665b730efde241b2269bc70113c42"
   },
   "limits": [
     "Both implementations authored in this contribution; no independent external review.",
     "Shared contract, schemas and authored corpus; matching outcomes can preserve a shared specification error."
   ],
-  "additional_mutants_killed": 9,
+  "additional_mutants_killed": 12,
   "additional_mutations": {
     "python-signature": [
       "bad-signature-evaluation",
       "bad-signature-test_environment",
       "bad-signature-serving_environment",
-      "bad-signature-approval"
+      "bad-signature-approval",
+      "bad-signature-criteria",
+      "bad-signature-criteria_timestamp",
+      "bad-signature-evaluation_timestamp"
     ],
     "python-artifact": [
       "wrong-weight-bytes",
@@ -41,13 +44,22 @@
       "wrong-subject-serving_environment",
       "wrong-domain-serving_environment",
       "wrong-subject-approval",
-      "wrong-domain-approval"
+      "wrong-domain-approval",
+      "wrong-subject-criteria",
+      "wrong-domain-criteria",
+      "wrong-subject-criteria_timestamp",
+      "wrong-domain-criteria_timestamp",
+      "wrong-subject-evaluation_timestamp",
+      "wrong-domain-evaluation_timestamp"
     ],
     "python-claim-and-key-time": [
       "expired-evaluation",
       "expired-test_environment",
       "expired-serving_environment",
       "expired-approval",
+      "expired-criteria",
+      "expired-criteria_timestamp",
+      "expired-evaluation_timestamp",
       "expired-authority",
       "future-claim"
     ],
@@ -75,11 +87,28 @@
       "revocation-unknown-serving_environment",
       "missing-approval",
       "revocation-unknown-approval",
+      "missing-criteria",
+      "revocation-unknown-criteria",
+      "missing-criteria_timestamp",
+      "revocation-unknown-criteria_timestamp",
+      "missing-evaluation_timestamp",
+      "revocation-unknown-evaluation_timestamp",
       "unknown-evaluation",
       "unknown-appraisal-test_environment",
       "unknown-appraisal-serving_environment",
       "unknown-usage",
-      "unknown-region"
+      "unknown-region",
+      "criteria-after-evaluation"
+    ],
+    "python-criteria-outcome": [
+      "criteria-outcome-unsupported"
+    ],
+    "python-criteria-order": [
+      "criteria-after-evaluation"
+    ],
+    "python-criteria-supersession": [
+      "criteria-revision-unreferenced",
+      "criteria-first-with-predecessor"
     ],
     "python-duplicate-key": [
       "escaped-duplicate"

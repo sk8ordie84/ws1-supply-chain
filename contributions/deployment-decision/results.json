@@ -1,7 +1,7 @@
 {
   "candidate": true,
-  "count": 82,
-  "matched": 82,
+  "count": 113,
+  "matched": 113,
   "results": [
     {
       "id": "admit-conditional",
@@ -52,7 +52,10 @@
         "decision": "refuse",
         "codes": [
           "ARTIFACT_APPROVAL",
+          "ARTIFACT_CRITERIA",
+          "ARTIFACT_CRITERIA_TIMESTAMP",
           "ARTIFACT_EVALUATION",
+          "ARTIFACT_EVALUATION_TIMESTAMP",
           "ARTIFACT_SERVING_ENVIRONMENT",
           "ARTIFACT_TEST_ENVIRONMENT"
         ]
@@ -343,6 +346,222 @@
         "decision": "refuse",
         "codes": [
           "REVOCATION_APPROVAL"
+        ]
+      }
+    },
+    {
+      "id": "missing-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "MISSING_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "wrong-subject-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "wrong-domain-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "bad-signature-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "SIGNATURE_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "expired-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "TIME_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "revocation-unknown-criteria",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "REVOCATION_CRITERIA"
+        ]
+      }
+    },
+    {
+      "id": "missing-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "MISSING_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "wrong-subject-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "wrong-domain-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "bad-signature-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "SIGNATURE_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "expired-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "TIME_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "revocation-unknown-criteria_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "REVOCATION_CRITERIA_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "missing-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "MISSING_EVALUATION_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "wrong-subject-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_EVALUATION_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "wrong-domain-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "ARTIFACT_EVALUATION_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "bad-signature-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "SIGNATURE_EVALUATION_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "expired-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "TIME_EVALUATION_TIMESTAMP"
+        ]
+      }
+    },
+    {
+      "id": "revocation-unknown-evaluation_timestamp",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "REVOCATION_EVALUATION_TIMESTAMP"
         ]
       }
     },
@@ -729,6 +948,154 @@
         "codes": [
           "CONDITION_USAGE",
           "MISSING_TEST_ENVIRONMENT"
+        ]
+      }
+    },
+    {
+      "id": "criteria-substituted",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_BINDING"
+        ]
+      }
+    },
+    {
+      "id": "criteria-matches-evaluation",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "pass",
+        "decision": "admit",
+        "codes": []
+      }
+    },
+    {
+      "id": "criteria-outcome-unsupported",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_OUTCOME"
+        ]
+      }
+    },
+    {
+      "id": "criteria-metric-at-threshold",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "pass",
+        "decision": "admit",
+        "codes": []
+      }
+    },
+    {
+      "id": "criteria-after-evaluation",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "not_established",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_ORDER"
+        ]
+      }
+    },
+    {
+      "id": "criteria-same-second",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "pass",
+        "decision": "admit",
+        "codes": []
+      }
+    },
+    {
+      "id": "criteria-revision-unreferenced",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_SUPERSESSION"
+        ]
+      }
+    },
+    {
+      "id": "criteria-revision-referenced",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "pass",
+        "decision": "admit",
+        "codes": []
+      }
+    },
+    {
+      "id": "criteria-first-with-predecessor",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_SUPERSESSION"
+        ]
+      }
+    },
+    {
+      "id": "criteria-metric-mismatch",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_METRIC"
+        ]
+      }
+    },
+    {
+      "id": "criteria-test-set-mismatch",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_TEST_SET"
+        ]
+      }
+    },
+    {
+      "id": "criteria-timestamp-unbound",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "CRITERIA_TIMESTAMP_BINDING"
+        ]
+      }
+    },
+    {
+      "id": "evaluation-timestamp-unbound",
+      "matched": true,
+      "actual": {
+        "status": "complete",
+        "verdict": "fail",
+        "decision": "refuse",
+        "codes": [
+          "EVALUATION_TIMESTAMP_BINDING"
         ]
       }
     },
